@@ -9,6 +9,8 @@ services:
     depends_on: !reset []
     networks: !override
       - front
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:

@@ -23,8 +23,6 @@ services:
     depends_on: !reset []
     networks: !override
       - front
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   copia:
     environment:
@@ -32,8 +30,6 @@ services:
     depends_on: !reset []
     networks: !override
       - front
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
   
 secrets:
   bd_password:

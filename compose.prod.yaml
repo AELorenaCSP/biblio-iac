@@ -1,0 +1,40 @@
+services:
+  bd:
+    profiles: ["bd-local"]
+
+  web:
+    environment:
+      CONTORNO: producion
+      DB_HOST: ${BD_HOST_PROD:?Falta definir BD_HOST_PROD no ficheiro .env}
+    depends_on: !reset []
+    networks: !override
+      - front
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  phpmyadmin:
+    environment:
+      PMA_HOST: ${BD_HOST_PROD}
+    depends_on: !reset []
+    networks: !override
+      - front
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  copia:
+    environment:
+      BD_HOST: ${BD_HOST_PROD}
+    depends_on: !reset []
+    networks: !override
+      - front
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  
+secrets:
+  bd_password:
+    file: ./segredos/bd_password_prod.txt

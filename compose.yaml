@@ -1,0 +1,122 @@
+# ============================================================
+# Infraestrutura das bibliotecas de Ribeira Alta
+# Completa as partes marcadas con COMPLETA.
+# ============================================================
+
+name: biblio
+
+services:
+
+  # ----------------------------------------------------------
+  # Base de datos
+  # ----------------------------------------------------------
+  bd:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${BD_NOME}
+      MARIADB_USER: ${BD_USUARIO}
+      MARIADB_PASSWORD_FILE: /run/secrets/bd_password
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/bd_root_password
+    secrets:
+      - bd_password
+      - bd_root_password
+    volumes:
+      - datos:/var/lib/mysql
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    networks:
+      - back
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------
+  # Web PHP
+  # ----------------------------------------------------------
+  web:
+    build:
+      context: .
+      args:  
+        VERSION: ${VERSION}
+    image: biblio-web:${VERSION}
+    restart: unless-stopped
+    environment:
+      DB_HOST: bd
+      DB_NAME: ${BD_NOME}
+      DB_USER: ${BD_USUARIO}
+      DB_PASSWORD_FILE: /run/secrets/bd_password
+      CONTORNO: ${CONTORNO:-producion}
+    secrets:
+      - bd_password
+    volumes:
+      - visitas:/var/www/datos
+    ports:
+      - "${PORTO_WEB}:80"
+    networks:
+      - front
+      - back
+    depends_on:
+      bd:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://localhost/saude.php') === false ? 1 : 0);"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  phpmyadmin:
+    image: phpmyadmin:5.2.3-apache
+    profiles: ["ferramentas"]
+    environment:
+      PMA_HOST: bd
+    ports:
+      - "127.0.0.1:8081:80"
+    networks:
+      - front
+      - back
+    depends_on:
+      bd:
+        condition: service_healthy
+
+  copia:
+    image: mariadb:11.4
+    profiles: ["operacions"]
+    environment:
+      BD_HOST: bd
+      BD_NOME: ${BD_NOME}
+      BD_USUARIO: ${BD_USUARIO}
+    secrets:
+      - bd_password
+    volumes:
+      - ./copias:/copias
+    networks:
+      - back
+    depends_on:
+      bd:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        mariadb-dump --skip-ssl -h "$$BD_HOST" -u "$$BD_USUARIO" --password="$$(cat /run/secrets/bd_password)"
+        --no-tablespaces "$$BD_NOME" > /copias/$$BD_NOME-$$(date +%Y%m%d-%H%M%S).sql
+        && echo "Copia gardada en copias/" && ls -l /copias
+
+networks:
+  front:
+  back:
+    internal: true
+
+volumes:
+  datos:
+  visitas:
+
+secrets:
+  bd_password:
+    file: ./segredos/bd_password.txt
+  bd_root_password:
+    file: ./segredos/bd_root_password.txt

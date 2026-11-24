@@ -1,0 +1,24 @@
+#Ignorar o contido de segredos/, excepto .gitkeep
+segredos/*
+!segredos/.gitkeep
+
+#Ignorar o contido de copias/, excepto .gitkeep
+copias/*
+!copias/.gitkeep
+
+# Ficheiros do sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Ficheiros de editores e IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
